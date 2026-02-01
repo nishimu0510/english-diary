@@ -16,7 +16,7 @@
         
         input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d2d2d7; box-sizing: border-box; font-size: 14px; margin-bottom: 10px; }
         .main { display: flex; flex-direction: column; align-items: center; margin: 20px 0; }
-        #btn { background: var(--primary); color: white; border: none; width: 80px; height: 80px; border-radius: 50%; font-size: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        #btn { background: #ff9500; color: white; border: none; width: 80px; height: 80px; border-radius: 50%; font-size: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         #btn.rec { background: #ff3b30; transform: scale(1.1); box-shadow: 0 0 15px rgba(255,59,48,0.5); }
         #status { margin-top: 15px; font-size: 14px; font-weight: bold; }
         .hint { font-size: 12px; color: #86868b; margin-top: 5px; text-align: center; }
@@ -139,7 +139,7 @@
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
                     messages: [
-                        {role:"system", content: "You are an insightful life coach and English teacher. Analyze the provided English draft and Japanese context. \n1. Summarize the content into the following 7 items in Japanese: ①Done, ②Mood, ③Why, ④Growth/Thank, ⑤Change, ⑥Kairos time, ⑦Reconsider.\n2. Create a natural, sophisticated revised diary in English based on all information.\nFormat your response as a JSON object: {\"summary\": \"①...\\n②...\", \"revised\": \"...\"}"},
+                        {role:"system", content: "You are an insightful life coach and English teacher. Analyze the provided English draft and Japanese context. \n1. Summarize the content into the following 7 items in English: ①Done, ②Mood, ③Why, ④Growth/Thank, ⑤Change, ⑥Kairos time, ⑦Reconsider.\n2. Create a natural, sophisticated revised diary in English based on all information.\nFormat your response as a JSON object: {\"summary\": \"①...\\n②...\", \"revised\": \"...\"}"},
                         {role:"user", content: `English Draft: ${orig}\nJapanese Context: ${ctx}`}
                     ],
                     response_format: { type: "json_object" }
