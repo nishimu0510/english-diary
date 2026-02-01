@@ -139,7 +139,7 @@
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
                     messages: [
-                        {role:"system", content: "You are an insightful life coach and English teacher. Analyze the provided English draft and Japanese context. \n1. Summarize the content into the following 7 items in English: ①Done, ②Mood, ③Why, ④Growth/Thank, ⑤Change, ⑥Kairos time, ⑦Reconsider.\n2. Create a natural, sophisticated revised diary in English based on all information.\nFormat your response as a JSON object: {\"summary\": \"①...\\n②...\", \"revised\": \"...\"}"},
+                        {role:"system", content: "You are an insightful life coach and English teacher. Analyze the provided English draft and Japanese context. \n1. Summarize the content into the following 7 items in English as bullet points:\n①Done: ...\n②Mood: ...\n③Why: ...\n④Growth/Thank: ...\n⑤Change: ...\n⑥Kairos time: ...\n⑦Reconsider: ...\n2. Create a natural, sophisticated revised diary in English based on all information.\nFormat your response as a JSON object: {\"summary\": \"①Done: ...\\n②Mood: ...\\n...\", \"revised\": \"...\"}"},
                         {role:"user", content: `English Draft: ${orig}\nJapanese Context: ${ctx}`}
                     ],
                     response_format: { type: "json_object" }
@@ -191,7 +191,7 @@
             try {
                 const res = await fetch('/api/notion', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: nt, database_id: nd, japanese: item.summary, english: item.revised, context: item.ctx })
+                    body: JSON.stringify({ token: nt, database_id: nd, summary: item.summary, revised: item.revised, original: item.orig, context: item.ctx })
                 });
                 if(res.ok) { item.saved = true; localStorage.setItem('dh7', JSON.stringify(h)); render(); }
             } catch(e) { alert(e); }

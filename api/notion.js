@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { token, database_id, japanese, english, context } = req.body;
+  const { token, database_id, summary, revised, original, context } = req.body;
 
   if (!token || !database_id) {
     return res.status(400).json({ error: 'Missing token or database_id' });
@@ -21,45 +21,22 @@ export default async function handler(req, res) {
     body: JSON.stringify({
       parent: { database_id },
       properties: {
-        Name: {
-          title: [{ text: { content: `Diary ${today}` } }],
-        },
         Date: {
           date: { start: today },
         },
+        Revised: {
+          rich_text: [{ text: { content: revised || '' } }],
+        },
+        Original: {
+          rich_text: [{ text: { content: original || '' } }],
+        },
+        Context: {
+          rich_text: [{ text: { content: context || '' } }],
+        },
+        Summary: {
+          rich_text: [{ text: { content: summary || '' } }],
+        },
       },
-      children: [
-        {
-          object: 'block',
-          type: 'heading_2',
-          heading_2: { rich_text: [{ text: { content: 'Summary (7 Items)' } }] },
-        },
-        {
-          object: 'block',
-          type: 'paragraph',
-          paragraph: { rich_text: [{ text: { content: japanese || '' } }] },
-        },
-        {
-          object: 'block',
-          type: 'heading_2',
-          heading_2: { rich_text: [{ text: { content: 'Revised Diary' } }] },
-        },
-        {
-          object: 'block',
-          type: 'paragraph',
-          paragraph: { rich_text: [{ text: { content: english || '' } }] },
-        },
-        {
-          object: 'block',
-          type: 'heading_2',
-          heading_2: { rich_text: [{ text: { content: 'Context (JP)' } }] },
-        },
-        {
-          object: 'block',
-          type: 'paragraph',
-          paragraph: { rich_text: [{ text: { content: context || '' } }] },
-        },
-      ],
     }),
   });
 
