@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>7-Items Diary Coach</title>
+    <style>
+        :root { --primary: #007aff; --bg: #ffffff; --revised: #34c759; --accent: #5856d6; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1c1c1e; }
+        .container { width: 100%; max-width: 500px; margin: 0 auto; }
+        
+        /* テーマ表示エリア */
+        .themes { background: #f2f2f7; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 13px; }
+        .themes h4 { margin: 0 0 8px 0; color: var(--accent); font-size: 14px; }
+        .themes ol { margin: 0; padding-left: 20px; line-height: 1.6; }
+        
+        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d2d2d7; box-sizing: border-box; font-size: 14px; margin-bottom: 10px; }
+        .main { display: flex; flex-direction: column; align-items: center; margin: 20px 0; }
+        #btn { background: var(--primary); color: white; border: none; width: 80px; height: 80px; border-radius: 50%; font-size: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        #btn.rec { background: #ff3b30; transform: scale(1.1); box-shadow: 0 0 15px rgba(255,59,48,0.5); }
+        #status { margin-top: 15px; font-size: 14px; font-weight: bold; }
+        .hint { font-size: 12px; color: #86868b; margin-top: 5px; text-align: center; }
+        
+        h3 { font-size: 18px; border-bottom: 1px solid #d2d2d7; padding-bottom: 8px; margin-top: 40px; display: flex; justify-content: space-between; }
+        .item { border-bottom: 2px solid #f2f2f7; padding: 20px 0; }
+        .label { font-size: 10px; font-weight: bold; color: #86868b; text-transform: uppercase; margin: 12px 0 4px 0; }
+        
+        /* 構造化要約のスタイル */
+        .summary-box { background: #f9f9fb; padding: 12px; border-radius: 8px; font-size: 14px; border-left: 4px solid var(--accent); }
+        .summary-item { margin-bottom: 4px; }
+        .summary-num { font-weight: bold; color: var(--accent); margin-right: 5px; }
+
+        .text-orig { font-size: 14px; color: #48484a; }
+        .text-rev { font-size: 16px; color: var(--revised); font-weight: 600; cursor: pointer; line-height: 1.5; background: #fafffa; padding: 10px; border-radius: 8px; }
+        
+        .save-btn { background: none; border: 1px solid #d2d2d7; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; float: right; }
+        .save-btn.saved { color: var(--revised); border-color: var(--revised); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="themes">
+            <h4>Talk about these 7 items:</h4>
+            <ol>
+                <li><b>Done:</b> 今日行ったこと</li>
+                <li><b>Mood:</b> 今日の気分</li>
+                <li><b>Why:</b> なぜそんな気分か</li>
+                <li><b>Growth/Thank:</b> 成長・感謝</li>
+                <li><b>Change:</b> 変えた、変わったこと</li>
+                <li><b>Kairos time:</b> 集中した時間</li>
+                <li><b>Reconsider:</b> 思い直したこと</li>
+            </ol>
+        </div>
+
+        <input type="password" id="key" placeholder="OpenAI Key">
+        <details>
+            <summary style="font-size:12px; color:#86868b; cursor:pointer">Notion Settings</summary>
+            <input type="password" id="nt" placeholder="Notion Token">
+            <input type="text" id="nd" placeholder="Database ID">
+        </details>
+
+        <div class="main">
+            <button id="btn">🎤</button>
+            <div id="status">Ready (Step 1)</div>
+            <div id="hint" class="hint">1. まずは上記項目を意識して英語で話してください</div>
+        </div>
+
+        <h3>Diary History <span style="font-size:12px; color:#ff3b30; cursor:pointer" onclick="clearH()">Clear all</span></h3>
+        <div id="list"></div>
+    </div>
+
+    <script>
+        let rec; let chunks = []; let audioStream = null;
+        let step = 1; 
+        let tempDiary = "";
+        const btn = document.getElementById('btn');
+        const status = document.getElementById('status');
+        const hint = document.getElementById('hint');
+        const list = document.getElementById('list');
+
+        window.onload = () => {
+            render();
+            ['k', 'nt', 'nd'].forEach(p => { if(localStorage.getItem(p)) document.getElementById(p==='k'?'key':p).value = localStorage.getItem(p); });
+        };
+
+        function stopStream() { if (audioStream) { audioStream.getTracks().forEach(t => t.stop()); audioStream = null; } }
+
+        btn.onclick = async () => {
+            const k = document.getElementById('key').value;
+            if(!k) return alert("Enter OpenAI Key");
+            localStorage.setItem('k', k);
+            if(rec && rec.state === "recording") { rec.stop(); return; }
+            try {
+                stopStream();
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                rec = new MediaRecorder(audioStream);
+                chunks = [];
+                rec.ondataavailable = e => chunks.push(e.data);
+                rec.onstop = async () => {
+                    btn.classList.remove('rec'); stopStream();
+                    const blob = new Blob(chunks, { type: rec.mimeType });
+                    processStep(blob, k);
+                };
+                rec.start();
+                btn.classList.add('rec');
+                status.innerText = step === 1 ? "Recording English..." : "Recording Japanese...";
+            } catch(e) { alert(e.message); }
+        };
+
+        async function processStep(blob, k) {
+            status.innerText = "Transcribing...";
+            const fd = new FormData();
+            fd.append("file", blob, "audio.m4a");
+            fd.append("model", "whisper-1");
+            fd.append("language", step === 1 ? "en" : "ja");
+
+            const stt = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+                method: "POST", headers: { "Authorization": `Bearer ${k}` }, body: fd
+            });
+            const { text } = await stt.json();
+
+            if(step === 1) {
+                tempDiary = text;
+                step = 2;
+                status.innerText = "Step 1 Done";
+                hint.innerText = "2. 次に日本語で補足や詳細を話してください";
+                btn.innerText = "🇯🇵";
+            } else {
+                await finalizeDiary(tempDiary, text, k);
+                step = 1; btn.innerText = "🎤";
+                hint.innerText = "1. まずは英語で日記を話してください";
+            }
+        }
+
+        async function finalizeDiary(orig, ctx, k) {
+            status.innerText = "Analyzing & Revising...";
+            const gpt = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST", headers: { "Authorization": `Bearer ${k}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        {role:"system", content: "You are an insightful life coach and English teacher. Analyze the provided English draft and Japanese context. \n1. Summarize the content into the following 7 items in Japanese: ①Done, ②Mood, ③Why, ④Growth/Thank, ⑤Change, ⑥Kairos time, ⑦Reconsider.\n2. Create a natural, sophisticated revised diary in English based on all information.\nFormat your response as a JSON object: {\"summary\": \"①...\\n②...\", \"revised\": \"...\"}"},
+                        {role:"user", content: `English Draft: ${orig}\nJapanese Context: ${ctx}`}
+                    ],
+                    response_format: { type: "json_object" }
+                })
+            });
+            const data = await gpt.json();
+            const result = JSON.parse(data.choices[0].message.content);
+
+            // TTS
+            const tts = await fetch("https://api.openai.com/v1/audio/speech", {
+                method: "POST", headers: { "Authorization": `Bearer ${k}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ model: "tts-1", voice: "alloy", input: result.revised })
+            });
+            new Audio(URL.createObjectURL(await tts.blob())).play();
+
+            const h = JSON.parse(localStorage.getItem('dh7') || '[]');
+            h.unshift({ orig, ctx, summary: result.summary, revised: result.revised, saved: false });
+            localStorage.setItem('dh7', JSON.stringify(h.slice(0, 20)));
+            render();
+            status.innerText = "Complete!";
+        }
+
+        function render() {
+            const h = JSON.parse(localStorage.getItem('dh7') || '[]');
+            list.innerHTML = h.map((item, idx) => `
+                <div class="item">
+                    <button class="save-btn ${item.saved?'saved':''}" onclick="saveNotion(${idx})">${item.saved?'✓':'Save to Notion'}</button>
+                    <div class="label">Summary (7 Items)</div>
+                    <div class="summary-box">${item.summary.replace(/\n/g, '<br>')}</div>
+                    
+                    <div class="label">Revised Diary</div>
+                    <div class="text-rev" onclick="sp('${item.revised.replace(/'/g,"")}')">${item.revised}</div>
+                    
+                    <details>
+                        <summary style="font-size:11px; color:#86868b; margin-top:10px; cursor:pointer">View Raw Data</summary>
+                        <div class="label">Original Draft</div><div class="text-orig">${item.orig}</div>
+                        <div class="label">Context (JP)</div><div class="text-orig">${item.ctx}</div>
+                    </details>
+                </div>
+            `).join('');
+        }
+
+        async function saveNotion(idx) {
+            const h = JSON.parse(localStorage.getItem('dh7') || '[]');
+            const item = h[idx];
+            const nt = document.getElementById('nt').value;
+            const nd = document.getElementById('nd').value;
+            if(!nt || !nd) return alert("Settings missing");
+            try {
+                const res = await fetch('/api/notion', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: nt, database_id: nd, japanese: item.summary, english: item.revised, context: item.ctx })
+                });
+                if(res.ok) { item.saved = true; localStorage.setItem('dh7', JSON.stringify(h)); render(); }
+            } catch(e) { alert(e); }
+        }
+
+        async function sp(t) {
+            const k = document.getElementById('key').value;
+            const res = await fetch("https://api.openai.com/v1/audio/speech", {
+                method: "POST", headers: { "Authorization": `Bearer ${k}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ model: "tts-1", voice: "alloy", input: t })
+            });
+            new Audio(URL.createObjectURL(await res.blob())).play();
+        }
+        function clearH() { if(confirm('Clear?')) { localStorage.removeItem('dh7'); render(); } }
+    </
