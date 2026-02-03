@@ -81,6 +81,9 @@
         window.onload = () => {
             render();
             ['k', 'nt', 'nd'].forEach(p => { if(localStorage.getItem(p)) document.getElementById(p==='k'?'key':p).value = localStorage.getItem(p); });
+            // Notion設定を変更時に自動保存
+            document.getElementById('nt').addEventListener('change', e => localStorage.setItem('nt', e.target.value));
+            document.getElementById('nd').addEventListener('change', e => localStorage.setItem('nd', e.target.value));
         };
 
         function stopStream() { if (audioStream) { audioStream.getTracks().forEach(t => t.stop()); audioStream = null; } }
