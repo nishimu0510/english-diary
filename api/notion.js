@@ -11,6 +11,32 @@ export default async function handler(req, res) {
 
   const today = new Date().toISOString().split('T')[0];
 
+  // Parse summary into rich_text segments with bold labels
+  const summaryRichText = [];
+  if (summary) {
+    const lines = summary.split('\n');
+    lines.forEach((line) => {
+      const match = line.match(/^(①.*?:|②.*?:|③.*?:|④.*?:|⑤.*?:|⑥.*?:|⑦.*?:)\s*(.*)/);
+      if (match) {
+        if (summaryRichText.length > 0) {
+          summaryRichText.push({ text: { content: '\n' } });
+        }
+        summaryRichText.push({
+          text: { content: match[1] + '\n' },
+          annotations: { bold: true },
+        });
+        if (match[2]) {
+          summaryRichText.push({ text: { content: match[2] } });
+        }
+      } else if (line.trim()) {
+        summaryRichText.push({ text: { content: line } });
+      }
+    });
+  }
+  if (summaryRichText.length === 0) {
+    summaryRichText.push({ text: { content: summary || '' } });
+  }
+
   const response = await fetch('https://api.notion.com/v1/pages', {
     method: 'POST',
     headers: {
@@ -34,7 +60,7 @@ export default async function handler(req, res) {
           rich_text: [{ text: { content: context || '' } }],
         },
         Summary: {
-          rich_text: [{ text: { content: summary || '' } }],
+          rich_text: summaryRichText,
         },
       },
     }),
